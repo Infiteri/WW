@@ -1,0 +1,1 @@
+start ./Bin/DevApp.exe

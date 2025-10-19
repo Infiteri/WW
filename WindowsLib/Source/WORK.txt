@@ -1,0 +1,330 @@
+#define UNICODE
+#define _UNICODE
+#include <glad/glad.h>
+#include <windows.h>
+
+HWND hwnd;
+HDC hdc;
+HGLRC hglrc;
+bool running = true;
+
+GLuint shaderProgram;
+GLuint VAO;
+
+// Vertex and fragment shaders
+const char *vertexShaderSrc = R"(
+#version 330 core
+layout(location = 0) in vec2 aPos;
+void main() {
+    gl_Position = vec4(aPos, 0.0, 1.0);
+}
+)";
+
+const char *fragmentShaderSrc = R"(
+#version 330 core
+out vec4 FragColor;
+void main() {
+    FragColor = vec4(0.0, 1.0, 0.0, 1.0); // green triangle
+}
+)";
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (msg == WM_CLOSE)
+        running = false;
+    return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+HWND GetWallpaperWindow()
+{
+    HWND progman = FindWindow(L"Progman", NULL);
+    SendMessageTimeout(progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
+
+    HWND worker = NULL;
+    EnumWindows(
+        [](HWND top, LPARAM lParam) -> BOOL
+        {
+            HWND defView = FindWindowEx(top, NULL, L"SHELLDLL_DefView", NULL);
+            if (defView)
+            {
+                HWND *ret = (HWND *)lParam;
+                *ret = FindWindowEx(NULL, top, L"WorkerW", NULL);
+                return FALSE;
+            }
+            return TRUE;
+        },
+        (LPARAM)&worker);
+
+    return worker ? worker : progman;
+}
+
+// Compile shader and check for errors
+GLuint CompileShader(GLenum type, const char *src)
+{
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &src, nullptr);
+    glCompileShader(shader);
+
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        char info[512];
+        glGetShaderInfoLog(shader, 512, NULL, info);
+        MessageBoxA(NULL, info, "Shader Compile Error", MB_OK | MB_ICONERROR);
+    }
+    return shader;
+}
+
+// Initialize triangle (VAO + VBO + shader)
+void InitTriangle()
+{
+    float vertices[] = {
+        0.0f, 0.5f,
+        -0.5f, -0.5f,
+        0.5f, -0.5f};
+
+    GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSrc);
+    GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSrc);
+
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    GLint success;
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        char info[512];
+        glGetProgramInfoLog(shaderProgram, 512, NULL, info);
+        MessageBoxA(NULL, info, "Shader Link Error", MB_OK | MB_ICONERROR);
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    glGenVertexArrays(1, &VAO);
+    GLuint VBO;
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int)
+{
+    WNDCLASS wc = {0};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInst;
+    wc.lpszClassName = L"WallpaperGL";
+    RegisterClass(&wc);
+
+    HWND parent = GetWallpaperWindow();
+
+    hwnd = CreateWindowEx(WS_EX_TOOLWINDOW, wc.lpszClassName, L"WallpaperGL", WS_CHILD | WS_VISIBLE,
+                          0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+                          parent, NULL, hInst, NULL);
+
+    hdc = GetDC(hwnd);
+
+    PIXELFORMATDESCRIPTOR pfd = {sizeof(PIXELFORMATDESCRIPTOR), 1,
+                                 PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+                                 PFD_TYPE_RGBA, 32,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 24, 8, 0, PFD_MAIN_PLANE, 0, 0, 0, 0};
+    int pf = ChoosePixelFormat(hdc, &pfd);
+    SetPixelFormat(hdc, pf, &pfd);
+    hglrc = wglCreateContext(hdc);
+    wglMakeCurrent(hdc, hglrc);
+
+    gladLoadGL();
+
+    InitTriangle();
+
+    ShowWindow(hwnd, SW_SHOW);
+
+    while (running)
+    {
+        MSG msg;
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+
+        SwapBuffers(hdc);
+        Sleep(16);
+    }
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteProgram(shaderProgram);
+
+    wglMakeCurrent(NULL, NULL);
+    wglDeleteContext(hglrc);
+    ReleaseDC(hwnd, hdc);
+    DestroyWindow(hwnd);
+
+    return 0;
+}
+
+#include "Display.h"
+#include <windows.h>
+#include <stdio.h>
+
+namespace WW
+{
+    static bool *s_running = nullptr; // Helper for WndProc
+
+    WindowsDisplay::WindowsDisplay()
+        : hwnd(nullptr), hdc(nullptr), hglrc(nullptr), running(true), parent(nullptr)
+    {
+        s_running = &running;
+    }
+
+    WindowsDisplay::~WindowsDisplay() {}
+
+    LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+    {
+        if (msg == WM_CLOSE && s_running)
+            *s_running = false;
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+    HWND WindowsDisplay::GetWallpaperWindow()
+    {
+        HWND progman = FindWindowA("Progman", nullptr);
+        if (!progman)
+        {
+            MessageBoxA(nullptr, "Could not find Progman!", "Wallpaper Debug", MB_OK | MB_ICONERROR);
+            return nullptr;
+        }
+
+        // Ask Progman to spawn WorkerW (desktop background layer)
+        SendMessageTimeoutA(progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
+
+        HWND foundWorker = nullptr;
+        EnumWindows([](HWND top, LPARAM lParam) -> BOOL
+                    {
+        HWND defView = FindWindowExA(top, nullptr, "SHELLDLL_DefView", nullptr);
+        if (defView)
+        {
+            HWND *out = (HWND *)lParam;
+            *out = FindWindowExA(nullptr, top, "WorkerW", nullptr);
+            return FALSE;
+        }
+        return TRUE; }, (LPARAM)&foundWorker);
+
+        char msg[256];
+        if (!foundWorker)
+        {
+            sprintf(msg, "WorkerW not found, falling back to Progman\nHandle: 0x%p", progman);
+            foundWorker = progman;
+        }
+
+        MessageBoxA(nullptr, msg, "Wallpaper Layer Info", MB_OK | MB_ICONINFORMATION);
+        return foundWorker;
+    }
+
+    void WindowsDisplay::Init()
+    {
+        wc = {};
+        wc.lpfnWndProc = WndProc;
+        wc.hInstance = GetModuleHandle(nullptr);
+        wc.lpszClassName = L"WallpaperGL";
+        RegisterClass(&wc);
+
+        parent = GetWallpaperWindow();
+
+        hwnd = CreateWindowEx(
+            WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW,
+            wc.lpszClassName,
+            L"WallpaperGL",
+            WS_CHILD | WS_VISIBLE,
+            0, 0,
+            GetSystemMetrics(SM_CXSCREEN),
+            GetSystemMetrics(SM_CYSCREEN),
+            parent,
+            nullptr,
+            wc.hInstance,
+            nullptr);
+
+        // Attach behind icons properly
+        SetParent(hwnd, parent);
+
+        LONG_PTR style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        style &= ~WS_EX_APPWINDOW;
+        style |= WS_EX_NOACTIVATE | WS_EX_TRANSPARENT;
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, style);
+
+        ShowWindow(hwnd, SW_SHOW);
+        UpdateWindow(hwnd);
+
+        hdc = GetDC(hwnd);
+        running = true;
+
+        PIXELFORMATDESCRIPTOR pfd = {};
+        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = 32;
+        pfd.cDepthBits = 24;
+        pfd.cStencilBits = 8;
+        pfd.iLayerType = PFD_MAIN_PLANE;
+
+        int pf = ChoosePixelFormat(hdc, &pfd);
+        SetPixelFormat(hdc, pf, &pfd);
+        hglrc = wglCreateContext(hdc);
+        wglMakeCurrent(hdc, hglrc);
+    }
+
+    void WindowsDisplay::PreRender()
+    {
+        MSG msg;
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+    void WindowsDisplay::PostRender()
+    {
+        if (hdc)
+            SwapBuffers(hdc);
+    }
+
+    void WindowsDisplay::Shutdown()
+    {
+        if (hwnd && hdc)
+            ReleaseDC(hwnd, hdc);
+        if (hglrc)
+        {
+            wglMakeCurrent(nullptr, nullptr);
+            wglDeleteContext(hglrc);
+            hglrc = nullptr;
+        }
+        if (hwnd)
+            DestroyWindow(hwnd);
+
+        hwnd = nullptr;
+        hdc = nullptr;
+        running = false;
+    }
+}
