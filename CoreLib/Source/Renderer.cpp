@@ -3,117 +3,87 @@
 #include "Shader.h"
 #include "Math/Transform.h"
 #include "Camera/PerspectiveCamera.h"
+#include "BatchRenderer.h"
 #include <glad/glad.h>
+#include <random>
 
 namespace WW
 {
 
-    VertexArray *array;
-    Shader *shader;
-    PerspectiveCamera camera;
-    Transform transform;
-
     static Renderer::State state;
 
-    void InitSquare()
-    {
-        shader = new Shader("Shader.glsl");
-        camera.SetPosition(Vector3(0.0f, 0.0f, -3.0f));
-        camera.UpdateView();
-
-        float vertices[] = {
-            // front
-            -0.5f, -0.5f, 0.5f,
-            0.5f, -0.5f, 0.5f,
-            0.5f, 0.5f, 0.5f,
-            0.5f, 0.5f, 0.5f,
-            -0.5f, 0.5f, 0.5f,
-            -0.5f, -0.5f, 0.5f,
-
-            // back
-            -0.5f, -0.5f, -0.5f,
-            -0.5f, 0.5f, -0.5f,
-            0.5f, 0.5f, -0.5f,
-            0.5f, 0.5f, -0.5f,
-            0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-
-            // left
-            -0.5f, 0.5f, 0.5f,
-            -0.5f, 0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f, 0.5f,
-            -0.5f, 0.5f, 0.5f,
-
-            // right
-            0.5f, 0.5f, 0.5f,
-            0.5f, -0.5f, -0.5f,
-            0.5f, 0.5f, -0.5f,
-            0.5f, -0.5f, -0.5f,
-            0.5f, 0.5f, 0.5f,
-            0.5f, -0.5f, 0.5f,
-
-            // top
-            -0.5f, 0.5f, -0.5f,
-            -0.5f, 0.5f, 0.5f,
-            0.5f, 0.5f, 0.5f,
-            0.5f, 0.5f, 0.5f,
-            0.5f, 0.5f, -0.5f,
-            -0.5f, 0.5f, -0.5f,
-
-            // bottom
-            -0.5f, -0.5f, -0.5f,
-            0.5f, -0.5f, -0.5f,
-            0.5f, -0.5f, 0.5f,
-            0.5f, -0.5f, 0.5f,
-            -0.5f, -0.5f, 0.5f,
-            -0.5f, -0.5f, -0.5f};
-
-        array = new VertexArray();
-        array->GenerateVertexBuffer(vertices, sizeof(vertices));
-        array->GetVertexBuffer()->AddLayout(0, 0, 3); // pos.xyz
-    }
-
-    void RenderSquare()
-    {
-        glEnable(GL_DEPTH_TEST);
-
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        shader->Use();
-        shader->Mat4(camera.GetView(), "view");
-        shader->Mat4(camera.GetProjection(), "projection");
-
-        // Update rotation
-        transform.Rotation.y += 1.0f;
-        transform.Rotation.x += 1.0f;
-        transform.Rotation.z += 1.0f;
-        shader->Mat4(transform.GetMatrix(), "model");
-
-        array->Bind();
-        array->GetVertexBuffer()->Bind();
-        array->GetVertexBuffer()->Draw();
-    }
+    BatchRenderer batch;
+    PerspectiveCamera camera;
+    Shader *shader;
+    std::vector<Transform> cubeTransforms;
+    std::vector<Material> cubeMaterials;
 
     void Renderer::Init()
     {
         gladLoadGL();
+        shader = new Shader("Shader.glsl");
+
         InitializeGPUScreen();
 
         glEnable(GL_DEPTH_TEST);
-        InitSquare();
+
+        camera.SetFOV(90.0f);
+        camera.SetPosition(Vector3(0.0f, 0.0f, -20.0f));
+        camera.UpdateView();
+
+        batch.Init();
+
+        std::mt19937 rng(42); // deterministic seed for reproducibility
+        std::uniform_real_distribution<float> posDist(-10.0f, 10.0f);
+        std::uniform_real_distribution<float> scaleDist(0.1f, 1.0f);
+        std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
+
+        int numCubes = 200;   // number of cubes
+        float spread = 20.0f; // how far cubes can be from the origin
+
+        for (int i = 0; i < numCubes; i++)
+        {
+            Transform t;
+            t.Position = Vector3(
+                ((float)rand() / RAND_MAX - 0.5f) * spread,
+                ((float)rand() / RAND_MAX - 0.5f) * spread,
+                ((float)rand() / RAND_MAX - 0.5f) * spread);
+            t.Rotation = Vector3(rand() % 360, rand() % 360, rand() % 360);
+            float f = 0.3f + ((float)rand() / RAND_MAX) * 0.7f;
+            t.Scale = Vector3(f, f, f);
+
+            Material m;
+            m.r = (float)rand() / RAND_MAX;
+            m.g = (float)rand() / RAND_MAX;
+            m.b = (float)rand() / RAND_MAX;
+            m.a = 1.0f;
+
+            cubeTransforms.push_back(t);
+            cubeMaterials.push_back(m);
+        }
     }
 
     void Renderer::Render()
     {
         BeginGPUScreenFrame();
 
-        RenderSquare();
+        batch.Begin();
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        camera.SetRotation({camera.GetRotation().x, camera.GetRotation().y, camera.GetRotation().z});
+        camera.UpdateView();
+
+        int i = 0;
+        for (auto &t : cubeTransforms)
+            batch.RenderCube(t, cubeMaterials[i++]);
+
+        batch.End(&camera, shader); // Flush all cubes in one draw call
 
         EndGPUScreenFrame();
 
+        // Render framebuffer to screen
         FBRenderPass *pass = state.Screen.Buffer->GetRenderPass(0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, pass->Id);
@@ -121,12 +91,6 @@ namespace WW
         state.Screen.ScreenShader->Use();
         state.Screen.Array->Bind();
         glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
-
-    void Renderer::Shutdown()
-    {
-        delete array;
-        delete shader;
     }
 
     void Renderer::Viewport(float w, float h)
@@ -140,6 +104,8 @@ namespace WW
 
         ResizeGPUScreen();
     }
+
+    void Renderer::Shutdown() {}
 
     void Renderer::InitializeGPUScreen()
     {

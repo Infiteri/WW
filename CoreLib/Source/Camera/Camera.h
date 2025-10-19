@@ -12,6 +12,7 @@ namespace WW
         virtual ~Camera() {};
 
         void SetPosition(const Vector3 &pos);
+        void SetRotation(const Vector3 &pos);
 
         void UpdateView();
         virtual void UpdateProjection() {};
@@ -22,9 +23,10 @@ namespace WW
         inline const Matrix4 &GetView() const { return view; };
 
         inline Vector3 &GetPosition() { return position; };
+        inline Vector3 &GetRotation() { return rotation; };
 
     protected:
         Matrix4 projection, view;
-        Vector3 position;
+        Vector3 position, rotation;
     };
 } // namespace Core
