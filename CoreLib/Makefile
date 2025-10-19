@@ -3,7 +3,8 @@ obj_dir ?= ../Bin-Obj
 src_dir ?= Source
 current_dir := $(notdir $(CURDIR))
 
-CPP_FILES := $(wildcard $(src_dir)/*.cpp)
+rwildcard = $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+CPP_FILES := $(call rwildcard,$(src_dir)/,*.cpp)
 OBJ_FILES := $(patsubst $(src_dir)/%.cpp,$(obj_dir)/$(current_dir)/$(src_dir)/%.o,$(CPP_FILES))
 OBJ_DIRS := $(sort $(dir $(OBJ_FILES)))
 
@@ -17,4 +18,4 @@ scaffold:
 
 $(obj_dir)/$(current_dir)/$(src_dir)/%.o: $(src_dir)/%.cpp
 	@mkdir -p $(dir $@)
-	g++ -c $< -o $@ -IVendor/glad/include -ICoreLib/Source
+	g++ -c $< -o $@ -IVendor/glad/include -ISource

@@ -1,3 +1,11 @@
 {
-    "C_Cpp.default.compilerPath": "D:/SYS/msys/ucrt64/bin/g++.exe"
+    "C_Cpp.default.compilerPath": "D:/SYS/msys/ucrt64/bin/g++.exe",
+    "files.associations": {
+        "*.json": "code-text-binary",
+        "*.h": "cpp",
+        "unordered_map": "cpp",
+        "fstream": "cpp",
+        "sstream": "cpp",
+        "iosfwd": "cpp"
+    }
 }

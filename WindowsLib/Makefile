@@ -8,7 +8,7 @@ CPP_FILES := $(call rwildcard,$(src_dir)/,*.cpp)
 OBJ_FILES := $(patsubst $(src_dir)/%.cpp,$(obj_dir)/$(current_dir)/$(src_dir)/%.o,$(CPP_FILES))
 OBJ_DIRS := $(sort $(dir $(OBJ_FILES)))
 CORE_LIB_DIR := ../Bin-Obj/CoreLib
-CORE_LIB_OBJS := $(wildcard $(CORE_LIB_DIR)/**/*.o)
+CORE_LIB_OBJS := $(call rwildcard,$(obj_dir)/CoreLib/Source,*.o)
 
 .PHONY: all scaffold link clean
 

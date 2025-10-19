@@ -1,118 +1,114 @@
 #include "Renderer.h"
 #include "Windows.h"
+#include "Shader.h"
 #include <glad/glad.h>
 
 namespace WW
 {
-    // --- OpenGL ---
-    GLuint shaderProgram;
+
     GLuint VAO, VBO;
+    Shader *shader;
+    Matrix4 projMatrix = Matrix4::Perspective(90.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
+    Matrix4 viewMatrix = Matrix4::Translate(Vector3(0.0f, 0.0f, -3.0f));
+    float rotationAngle = 0.0f; // rotation accumulator
 
-    // Vertex shader (2D, no transforms)
-    const char *vertexShaderSrc = R"(
-#version 330 core
-layout(location = 0) in vec2 aPos;
-void main() {
-    gl_Position = vec4(aPos, 0.0, 1.0);
-}
-)";
-
-    // Fragment shader (white)
-    const char *fragmentShaderSrc = R"(
-#version 330 core
-out vec4 FragColor;
-void main() {
-    FragColor = vec4(1.0, 1.0, 1.0, 1.0); // white
-}
-)";
-
-    // Compile shader utility
-    GLuint CompileShader(GLenum type, const char *src)
-    {
-        GLuint shader = glCreateShader(type);
-        glShaderSource(shader, 1, &src, nullptr);
-        glCompileShader(shader);
-
-        GLint success;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            char info[512];
-            glGetShaderInfoLog(shader, 512, nullptr, info);
-            MessageBoxA(nullptr, info, "Shader Compile Error", MB_OK | MB_ICONERROR);
-        }
-        return shader;
-    }
-
-    // Initialize square (2 triangles, no transforms)
     void InitSquare()
     {
+        shader = new Shader("Shader.glsl");
+
         float vertices[] = {
-            -0.5f, -0.5f,
-            0.5f, -0.5f,
-            0.5f, 0.5f,
-            0.5f, 0.5f,
-            -0.5f, 0.5f,
-            -0.5f, -0.5f};
+            // front
+            -0.5f, -0.5f, 0.5f,
+            0.5f, -0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f,
+            -0.5f, 0.5f, 0.5f,
+            -0.5f, -0.5f, 0.5f,
 
-        GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSrc);
-        GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSrc);
+            // back
+            -0.5f, -0.5f, -0.5f,
+            -0.5f, 0.5f, -0.5f,
+            0.5f, 0.5f, -0.5f,
+            0.5f, 0.5f, -0.5f,
+            0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f,
 
-        shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
+            // left
+            -0.5f, 0.5f, 0.5f,
+            -0.5f, 0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, 0.5f,
+            -0.5f, 0.5f, 0.5f,
 
-        GLint success;
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-        if (!success)
-        {
-            char info[512];
-            glGetProgramInfoLog(shaderProgram, 512, nullptr, info);
-            MessageBoxA(nullptr, info, "Shader Link Error", MB_OK | MB_ICONERROR);
-        }
+            // right
+            0.5f, 0.5f, 0.5f,
+            0.5f, -0.5f, -0.5f,
+            0.5f, 0.5f, -0.5f,
+            0.5f, -0.5f, -0.5f,
+            0.5f, 0.5f, 0.5f,
+            0.5f, -0.5f, 0.5f,
 
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+            // top
+            -0.5f, 0.5f, -0.5f,
+            -0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, -0.5f,
+            -0.5f, 0.5f, -0.5f,
+
+            // bottom
+            -0.5f, -0.5f, -0.5f,
+            0.5f, -0.5f, -0.5f,
+            0.5f, -0.5f, 0.5f,
+            0.5f, -0.5f, 0.5f,
+            -0.5f, -0.5f, 0.5f,
+            -0.5f, -0.5f, -0.5f};
 
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
 
         glBindVertexArray(VAO);
-
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(0);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
 
-    // Render the square
     void RenderSquare()
     {
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black background
-        glClear(GL_COLOR_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST); // ensure depth test is enabled
 
-        glUseProgram(shaderProgram);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader->Use();
+        shader->Mat4(viewMatrix, "view");
+        shader->Mat4(projMatrix, "projection");
+
+        // Update rotation
+        rotationAngle += 0.01f;
+        Matrix4 model = Matrix4::RotateZYX(Vector3(rotationAngle, rotationAngle, rotationAngle));
+        shader->Mat4(model, "model");
+
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
     }
 
     void Renderer::Init()
     {
         gladLoadGL();
-
+        glEnable(GL_DEPTH_TEST);
         InitSquare();
     }
 
     void Renderer::Render()
     {
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black background
-        glClear(GL_COLOR_BUFFER_BIT);
         RenderSquare();
     }
 
@@ -120,7 +116,14 @@ void main() {
     {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
-        glDeleteProgram(shaderProgram);
+
+        delete shader;
     }
 
+    void Renderer::Viewport(float w, float h)
+    {
+        glViewport(0, 0, static_cast<GLsizei>(w), static_cast<GLsizei>(h));
+
+        Matrix4 projMatrix = Matrix4::Perspective(90.0f, w / h, 0.1f, 100.0f);
+    }
 }

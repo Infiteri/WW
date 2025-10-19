@@ -1,4 +1,5 @@
 #include "Display.h"
+#include "Renderer.h"
 #include <windows.h>
 #include <stdio.h>
 
@@ -10,6 +11,8 @@ namespace WW
         : hwnd(nullptr), hdc(nullptr), hglrc(nullptr), running(true), parent(nullptr)
     {
         s_running = &running;
+        width = GetSystemMetrics(SM_CXSCREEN);
+        height = GetSystemMetrics(SM_CYSCREEN);
     }
 
     WindowsDisplay::~WindowsDisplay() {}
@@ -18,8 +21,10 @@ namespace WW
     {
         if (msg == WM_CLOSE && s_running)
             *s_running = false;
+
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
+
     HWND WindowsDisplay::GetWallpaperWindow()
     {
         HWND progman = FindWindowA("Progman", nullptr);
@@ -29,34 +34,32 @@ namespace WW
             return nullptr;
         }
 
-        // Ask Progman to spawn WorkerW (desktop background layer)
         SendMessageTimeoutA(progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
 
         HWND foundWorker = nullptr;
         EnumWindows([](HWND top, LPARAM lParam) -> BOOL
                     {
-        HWND defView = FindWindowExA(top, nullptr, "SHELLDLL_DefView", nullptr);
-        if (defView)
-        {
-            HWND *out = (HWND *)lParam;
-            *out = FindWindowExA(nullptr, top, "WorkerW", nullptr);
-            return FALSE;
-        }
-        return TRUE; }, (LPARAM)&foundWorker);
+                        HWND defView = FindWindowExA(top, nullptr, "SHELLDLL_DefView", nullptr);
+                        if (defView)
+                        {
+                            HWND *out = (HWND *)lParam;
+                            *out = FindWindowExA(nullptr, top, "WorkerW", nullptr);
+                            return FALSE;
+                        }
+                        return TRUE; }, (LPARAM)&foundWorker);
 
-        char msg[256];
         if (!foundWorker)
-        {
-            sprintf(msg, "WorkerW not found, falling back to Progman\nHandle: 0x%p", progman);
             foundWorker = progman;
-            MessageBoxA(nullptr, msg, "Wallpaper Layer Info", MB_OK | MB_ICONINFORMATION);
-        }
 
         return foundWorker;
     }
 
     void WindowsDisplay::Init()
     {
+        // Get current screen size
+        width = GetSystemMetrics(SM_CXSCREEN);
+        height = GetSystemMetrics(SM_CYSCREEN);
+
         wc = {};
         wc.lpfnWndProc = WndProc;
         wc.hInstance = GetModuleHandle(nullptr);
@@ -71,14 +74,15 @@ namespace WW
             L"WallpaperGL",
             WS_CHILD | WS_VISIBLE,
             0, 0,
-            GetSystemMetrics(SM_CXSCREEN),
-            GetSystemMetrics(SM_CYSCREEN),
+            width,
+            height,
             parent,
             nullptr,
             wc.hInstance,
             nullptr);
 
-        // Attach behind icons properly
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)this); // store pointer for WM_SIZE
+
         SetParent(hwnd, parent);
 
         LONG_PTR style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
@@ -116,6 +120,9 @@ namespace WW
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        width = GetSystemMetrics(SM_CXSCREEN);
+        height = GetSystemMetrics(SM_CYSCREEN);
+        Renderer::Viewport(width, height);
     }
 
     void WindowsDisplay::PostRender()
