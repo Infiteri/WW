@@ -1,6 +1,8 @@
 #include "Renderer.h"
 #include "Windows.h"
 #include "Shader.h"
+#include "Math/Transform.h"
+#include "Camera/PerspectiveCamera.h"
 #include <glad/glad.h>
 
 namespace WW
@@ -8,13 +10,14 @@ namespace WW
 
     GLuint VAO, VBO;
     Shader *shader;
-    Matrix4 projMatrix = Matrix4::Perspective(90.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
-    Matrix4 viewMatrix = Matrix4::Translate(Vector3(0.0f, 0.0f, -3.0f));
-    float rotationAngle = 0.0f; // rotation accumulator
+    PerspectiveCamera camera;
+    Transform transform;
 
     void InitSquare()
     {
         shader = new Shader("Shader.glsl");
+        camera.SetPosition(Vector3(0.0f, 0.0f, -3.0f));
+        camera.UpdateView();
 
         float vertices[] = {
             // front
@@ -87,13 +90,14 @@ namespace WW
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader->Use();
-        shader->Mat4(viewMatrix, "view");
-        shader->Mat4(projMatrix, "projection");
+        shader->Mat4(camera.GetView(), "view");
+        shader->Mat4(camera.GetProjection(), "projection");
 
         // Update rotation
-        rotationAngle += 0.01f;
-        Matrix4 model = Matrix4::RotateZYX(Vector3(rotationAngle, rotationAngle, rotationAngle));
-        shader->Mat4(model, "model");
+        transform.Rotation.y += 1.0f;
+        transform.Rotation.x += 1.0f;
+        transform.Rotation.z += 1.0f;
+        shader->Mat4(transform.GetMatrix(), "model");
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -124,6 +128,6 @@ namespace WW
     {
         glViewport(0, 0, static_cast<GLsizei>(w), static_cast<GLsizei>(h));
 
-        Matrix4 projMatrix = Matrix4::Perspective(90.0f, w / h, 0.1f, 100.0f);
+        camera.SetAspect(w / h);
     }
 }
