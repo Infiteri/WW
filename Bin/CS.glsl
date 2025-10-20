@@ -15,30 +15,37 @@ void main() {
 in vec2 vUVs;
 out vec4 oColor;
 
-uniform float uTime;
+uniform float uTime; // increment each frame
+
+vec3 palette(float t) {
+    vec3 a = vec3(0.5, 0.5, 0.5);
+    vec3 b = vec3(0.5, 0.5, 0.5);
+    vec3 c = vec3(1.0, 1.0, 1.0);
+    vec3 d = vec3(0.263, 0.416, 0.557);
+    return a + b * cos(6.28318 * (c * t + d));
+}
 
 void main() {
-    // Center coordinates
-    vec2 uv = vUVs - 0.5;
-    float time = uTime / 5;
+    // Correct for 16:9 aspect ratio
+    vec2 uv = vUVs * 2.0 - 1.0;
+    uv.x *= 1920.0 / 1080.0; // aspect correction
+    vec2 uv0 = uv;
 
-    // Flowing wave movement
-    float waveX = sin(uv.y * 10.0 + time * 0.8) * 0.05;
-    float waveY = cos(uv.x * 10.0 + time * 0.7) * 0.05;
-    uv += vec2(waveX, waveY);
+    vec3 finalColor = vec3(0.0);
 
-    // Radius and angle for radial patterns
-    float radius = length(uv);
-    float angle = atan(uv.y, uv.x);
+    for (float i = 0.0; i < 4.0; i++) {
+        uv = fract(uv * 1.5) - 0.5;
 
-    // Smooth dynamic colors
-    vec3 color;
-    color.r = 0.5 + 0.5 * sin(time + radius * 6.0);
-    color.g = 0.5 + 0.5 * sin(time * 0.7 + angle * 5.0);
-    color.b = 0.5 + 0.5 * cos(time * 0.9 + radius * 3.0);
+        float d = length(uv) * exp(-length(uv0));
 
-    // Soft vignette for depth
-    float vignette = smoothstep(0.5, 0.0, radius);
+        vec3 col = palette(length(uv0) + i * 0.4 + uTime * 0.4);
 
-    oColor = vec4(color * vignette, 1.0);
+        d = sin(d * 8.0 + uTime) / 8.0;
+        d = abs(d);
+        d = pow(0.01 / d, 1.2);
+
+        finalColor += col * d;
+    }
+
+    oColor = vec4(finalColor, 1.0);
 }

@@ -91,7 +91,7 @@ namespace WW
         if (!array || !screenShader)
             return;
 
-        frameCount += 1;
+        frameCount += 1.0/60;
 
         switch (type)
         {
