@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include "Debug/WWDebug.h"
 #include <fstream>
 #include <glad/glad.h>
 #include <iostream>
@@ -79,6 +80,31 @@ namespace WW
     {
         uint32_t id = GetUniId(name);
         glUniform1i(id, data);
+    }
+
+    void Shader::Float(float data, const char *name)
+    {
+        uint32_t id = GetUniId(name);
+        glUniform1f(id, data);
+    }
+
+    void Shader::Vec2(const Vector2 &vec, const char *name)
+    {
+        uint32_t id = GetUniId(name);
+        glUniform2f(id, vec.x, vec.y);
+    }
+
+    void Shader::Vec3(const Vector3 &vec, const char *name)
+    {
+        uint32_t id = GetUniId(name);
+        glUniform3f(id, vec.x, vec.y, vec.z);
+    }
+
+    void Shader::Color4(const Color &color, const char *name)
+    {
+        uint32_t id = GetUniId(name);
+        Color c = color.Normalized();
+        glUniform4f(id, c.r, c.g, c.b, c.a);
     }
 
     void Shader::Compile(const char *vertSrc, const char *fragSrc)

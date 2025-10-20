@@ -12,15 +12,21 @@ namespace WW
 {
     static Renderer::State state;
 
-    static std::unique_ptr<BackgroundLayer> backgroundLayer;
+    static std::unique_ptr<BackgroundLayer> backgroundLayer, bg2;
     static std::vector<Transform> cubeTransforms;
     static std::vector<Material> cubeMaterials;
     static std::shared_ptr<Texture2D> tex;
+
+    Color lastColor; // last frame color used
+    float lerpFactor = 0.05f;
 
     void Renderer::Init()
     {
         gladLoadGL();
         TextureSystem::Init();
+
+        bg2 = std::make_unique<BackgroundLayer>();
+        bg2->SetTypeTexture("image.jfif");
 
         backgroundLayer = std::make_unique<BackgroundLayer>();
         backgroundLayer->SetTypeShader("CS.glsl");

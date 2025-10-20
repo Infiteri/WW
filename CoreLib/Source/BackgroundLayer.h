@@ -5,6 +5,7 @@
 #include "Texture/Texture2D.h"
 #include "Buffer/VertexArray.h"
 #include <memory>
+#include <variant>
 
 namespace WW
 {
@@ -27,6 +28,13 @@ namespace WW
         void SetTypeSolidColor(const Color &c);
         void SetTypeTexture(const std::string &texturePath);
         void SetTypeShader(const std::string &shaderPath);
+
+        void SetUniform(const std::string &name, int v);
+        void SetUniform(const std::string &name, float v);
+        void SetUniform(const std::string &name, const Color &v);
+        void SetUniform(const std::string &name, const Vector2 &v);
+        void SetUniform(const std::string &name, const Vector3 &v);
+        void SetUniform(const std::string &name, const Matrix4 &v);
 
         inline BackgroundType GetType() const { return type; }
 
@@ -51,8 +59,17 @@ namespace WW
         std::shared_ptr<Shader> customShader;
 
     private:
-        void
-        EnsureBackgroundState();
+        void EnsureBackgroundState();
+
+        void UploaUniforms(std::shared_ptr<Shader> shader);
+
+    private:
+        struct UniformValue
+        {
+            using ValueType = std::variant<int, float, Color, Vector2, Vector3, Matrix4>;
+            ValueType value;
+        };
+        std::unordered_map<std::string, UniformValue> uniforms;
     };
 
 }

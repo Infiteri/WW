@@ -7,6 +7,7 @@
 namespace WW
 {
 
+    static float frameCount = 0;
     void BackgroundLayer::EnsureBackgroundState()
     {
         if (!array)
@@ -29,6 +30,51 @@ namespace WW
             screenShader = ShaderSystem::GetShader("BgShader.glsl");
     }
 
+    void BackgroundLayer::SetUniform(const std::string &name, int v) { uniforms[name].value = v; }
+    void BackgroundLayer::SetUniform(const std::string &name, float v) { uniforms[name].value = v; }
+    void BackgroundLayer::SetUniform(const std::string &name, const Color &v) { uniforms[name].value = v; }
+    void BackgroundLayer::SetUniform(const std::string &name, const Vector2 &v) { uniforms[name].value = v; }
+    void BackgroundLayer::SetUniform(const std::string &name, const Vector3 &v) { uniforms[name].value = v; }
+    void BackgroundLayer::SetUniform(const std::string &name, const Matrix4 &v) { uniforms[name].value = v; }
+
+    void BackgroundLayer::UploaUniforms(std::shared_ptr<Shader> shader)
+    {
+        if (!shader)
+            return;
+
+        for (auto &[name, uniform] : uniforms)
+        {
+            std::visit([&](auto &&val)
+                       {
+        using T = std::decay_t<decltype(val)>;
+
+        if constexpr (std::is_same_v<T, int>)
+        {
+            shader->Int(val, name.c_str());
+        }
+        else if constexpr (std::is_same_v<T, float>)
+        {
+            shader->Float(val, name.c_str());
+        }
+        else if constexpr (std::is_same_v<T, Color>)
+        {
+            shader->Color4(val, name.c_str());
+        }
+        else if constexpr (std::is_same_v<T, Vector2>)
+        {
+            shader->Vec2(val, name.c_str());
+        }
+        else if constexpr (std::is_same_v<T, Vector3>)
+        {
+            shader->Vec3(val, name.c_str());
+        }
+        else if constexpr (std::is_same_v<T, Matrix4>)
+        {
+            shader->Mat4(val, name.c_str());
+        } }, uniform.value);
+        }
+    }
+
     BackgroundLayer::BackgroundLayer()
         : type(BackgroundType::SolidColor), array(nullptr)
     {
@@ -44,6 +90,8 @@ namespace WW
         EnsureBackgroundState();
         if (!array || !screenShader)
             return;
+
+        frameCount += 1;
 
         switch (type)
         {
@@ -79,6 +127,8 @@ namespace WW
             }
 
             customShader->Use();
+            UploaUniforms(customShader);
+            customShader->Float(frameCount, "uTime");
             array->Bind();
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
