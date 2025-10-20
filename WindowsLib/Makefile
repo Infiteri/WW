@@ -20,7 +20,7 @@ scaffold:
 
 $(obj_dir)/$(current_dir)/$(src_dir)/%.o: $(src_dir)/%.cpp
 	@mkdir -p $(dir $@)
-	g++ -c $< -o $@  -DUNICODE -D_UNICODE  -I../CoreLib/Source -I$(src_dir) -I../CoreLib/Vendor/glad/include
+	g++ -c -g $< -o $@  -DUNICODE -D_UNICODE  -I../CoreLib/Source -I$(src_dir) -I../CoreLib/Vendor/glad/include
 
 link:
 	@g++ -mwindows -o $(build_dir)/DevApp.exe $(OBJ_FILES) $(CORE_LIB_OBJS) -lgdi32 -lopengl32 -luser32
