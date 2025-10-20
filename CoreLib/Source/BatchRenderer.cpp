@@ -2,15 +2,14 @@
 
 namespace WW
 {
-    std::unordered_map<std::string, int> textureSlotMap; // Texture path → GPU slot
-    std::vector<Texture2D *> boundTextures;              // All bound textures for this frame
-    static const int MaxTextureSlots = 16;               // Or glGetInt(GL_MAX_TEXTURE_IMAGE_UNITS)
+    std::unordered_map<std::string, int> textureSlotMap;   // Texture path → GPU slot
+    std::vector<std::shared_ptr<Texture2D>> boundTextures; // All bound textures for this frame
+    static const int MaxTextureSlots = 16;                 // Or query via glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &x)
 
     void BatchRenderer::Init()
     {
         instanceCount = 0;
 
-        // Cube vertex data: position (xyz) + UV (uv)
         float cubeVertices[] = {
             // front
             -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
@@ -60,20 +59,17 @@ namespace WW
             -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
             -0.5f, -0.5f, -0.5f, 0.0f, 1.0f};
 
-        // Cube VAO setup
         cubeVAO = new VertexArray();
         cubeVAO->GenerateVertexBuffer(cubeVertices, sizeof(cubeVertices));
         cubeVAO->GetVertexBuffer()->AddLayout(0, 0, 3); // position
         cubeVAO->GetVertexBuffer()->AddLayout(6, 3, 2); // UV
 
-        // Instance buffer
         glGenBuffers(1, &instanceVBO);
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(InstanceData) * MaxInstances, nullptr, GL_DYNAMIC_DRAW);
 
         cubeVAO->Bind();
 
-        // Per-instance: model matrix (4 vec4s)
         for (int i = 0; i < 4; ++i)
         {
             glEnableVertexAttribArray(1 + i);
@@ -83,7 +79,6 @@ namespace WW
             glVertexAttribDivisor(1 + i, 1);
         }
 
-        // Per-instance: material color
         glEnableVertexAttribArray(5);
         glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE,
                               sizeof(InstanceData),
@@ -91,7 +86,8 @@ namespace WW
         glVertexAttribDivisor(5, 1);
 
         glEnableVertexAttribArray(7);
-        glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, sizeof(InstanceData), (void *)(offsetof(InstanceData, material) + sizeof(float) * 4));
+        glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+                              (void *)(offsetof(InstanceData, material) + sizeof(float) * 4));
         glVertexAttribDivisor(7, 1);
     }
 
@@ -129,7 +125,7 @@ namespace WW
                 }
                 else
                 {
-                    Texture2D *tex = TextureSystem::Get2D(mat.ColorTexturePath);
+                    std::shared_ptr<Texture2D> tex = TextureSystem::Get2D(mat.ColorTexturePath);
                     tex->Use(slot);
                     textureSlotMap[mat.ColorTexturePath] = slot;
                     boundTextures.push_back(tex);
@@ -139,11 +135,11 @@ namespace WW
 
         instanceData[instanceCount].model = t.GetMatrix();
         instanceData[instanceCount].material = {
-            .r = mat.r,
-            .g = mat.g,
-            .b = mat.b,
-            .a = mat.a,
-            .ColorTextureIndex = slot};
+            .r = mat.Color.r / 255.0f,
+            .g = mat.Color.g / 255.0f,
+            .b = mat.Color.b / 255.0f,
+            .a = mat.Color.a / 255.0f,
+            .ColorTextureIndex = (float)slot};
 
         instanceCount++;
     }
@@ -160,7 +156,6 @@ namespace WW
 
         shader->Use();
 
-        // Bind all textures to their respective slots
         for (int i = 0; i < (int)boundTextures.size(); i++)
         {
             boundTextures[i]->Use(i);

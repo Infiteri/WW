@@ -1,125 +1,83 @@
 #include "Renderer.h"
 #include "Windows.h"
-#include "Shader.h"
+#include "ShaderSystem.h"
+#include "BackgroundLayer.h"
 #include "Math/Transform.h"
-#include "Camera/PerspectiveCamera.h"
 #include "Texture/Texture2D.h"
 #include "Texture/TextureSystem.h"
-#include "BatchRenderer.h"
 #include <glad/glad.h>
 #include <random>
 
 namespace WW
 {
-
     static Renderer::State state;
 
-    VertexArray *bg;
-    BatchRenderer batch;
-    PerspectiveCamera camera;
-    Shader *shader, *bgShader;
-    Texture2D *tex;
-    std::vector<Transform> cubeTransforms;
-    std::vector<Material> cubeMaterials;
+    static std::unique_ptr<BackgroundLayer> backgroundLayer;
+    static std::vector<Transform> cubeTransforms;
+    static std::vector<Material> cubeMaterials;
+    static std::shared_ptr<Texture2D> tex;
 
     void Renderer::Init()
     {
         gladLoadGL();
         TextureSystem::Init();
-        shader = new Shader("Shader.glsl");
-        bgShader = new Shader("BgShader.glsl");
-        tex = TextureSystem::Get2D("image.jfif");
+
+        backgroundLayer = std::make_unique<BackgroundLayer>();
+        backgroundLayer->SetTypeShader("CS.glsl");
+
+        state.MainShader = ShaderSystem::LoadShader("Shader.glsl");
 
         InitializeGPUScreen();
 
         glEnable(GL_DEPTH_TEST);
 
-        camera.SetFOV(90.0f);
-        camera.SetPosition(Vector3(0.0f, 0.0f, -5.0f));
-        camera.UpdateView();
+        state.Camera.SetFOV(90.0f);
+        state.Camera.SetPosition(Vector3(0.0f, 0.0f, -5.0f));
+        state.Camera.UpdateView();
 
-        batch.Init();
+        state.Batch.Init();
 
-        std::mt19937 rng(42);
-        std::uniform_real_distribution<float> posDist(-10.0f, 10.0f);
-        std::uniform_real_distribution<float> scaleDist(0.1f, 1.0f);
-        std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
-
-        int numCubes = 2300;
-        float spread = 20.0f;
-
-        // Cube 1
         cubeTransforms.push_back(Transform{.Position = Vector3(-2.0f, 0.0f, 0.0f)});
-
-        // Cube 2
         cubeTransforms.push_back(Transform{.Position = Vector3(2.0f, 0.0f, 0.0f)});
-        // Assuming Material has public members
+
         Material mat0;
-        mat0.r = 1;
-        mat0.g = 1;
-        mat0.b = 1;
-        mat0.a = 1;
+        mat0.Color = {255, 255, 255, 255};
         mat0.ColorTexturePath = "image.jfif";
         cubeMaterials.push_back(mat0);
 
         Material mat1;
-        mat1.r = 1;
-        mat1.g = 1;
-        mat1.b = 1;
-        mat1.a = 1;
+        mat1.Color = {255, 255, 255, 255};
         mat1.ColorTexturePath = "port.jfif";
-
         cubeMaterials.push_back(mat1);
-
-        float quadVertices[] = {
-            // pos.xy   uv.xy
-            -1.0f, 1.0f, 0.0f, 1.0f,
-            -1.0f, -1.0f, 0.0f, 0.0f,
-            1.0f, -1.0f, 1.0f, 0.0f,
-
-            -1.0f, 1.0f, 0.0f, 1.0f,
-            1.0f, -1.0f, 1.0f, 0.0f,
-            1.0f, 1.0f, 1.0f, 1.0f};
-
-        bg = new VertexArray();
-        bg->GenerateVertexBuffer(quadVertices, sizeof(quadVertices));
-        bg->GetVertexBuffer()->AddLayout(0, 0, 2);
-        bg->GetVertexBuffer()->AddLayout(1, 2, 2);
     }
 
     void Renderer::Render()
     {
         BeginGPUScreenFrame();
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        state.Camera.UpdateView();
 
+        // Render the background
         glDisable(GL_DEPTH_TEST);
-        bgShader->Use();
-        tex->Use(1);
-        bgShader->Int(1, "uTexture");
-        bg->Bind();
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        backgroundLayer->Render();
         glEnable(GL_DEPTH_TEST);
 
-        camera.UpdateView();
-
-        batch.Begin();
-        shader->Use();
+        // Render the main objects in 3D
+        state.Batch.Begin();
+        state.MainShader->Use();
         int i = 0;
         for (auto &t : cubeTransforms)
-            batch.RenderCube(t, cubeMaterials[i++]);
+            state.Batch.RenderCube(t, cubeMaterials[i++]);
+        state.Batch.End(&state.Camera, state.MainShader.get());
 
-        batch.End(&camera, shader);
-
+        // End frame
         EndGPUScreenFrame();
 
-        // 3️⃣ Render framebuffer to screen
         FBRenderPass *pass = state.Screen.Buffer->GetRenderPass(0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, pass->Id);
-        state.Screen.ScreenShader->Int(0, "uScreenTexture");
-        state.Screen.ScreenShader->Use();
+        state.Screen.Shader->Use();
+        state.Screen.Shader->Int(0, "uScreenTexture");
         state.Screen.Array->Bind();
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
@@ -127,12 +85,9 @@ namespace WW
     void Renderer::Viewport(float w, float h)
     {
         glViewport(0, 0, static_cast<GLsizei>(w), static_cast<GLsizei>(h));
-
-        camera.SetAspect(w / h);
-
+        state.Camera.SetAspect(w / h);
         state.Viewport.Width = w;
         state.Viewport.Height = h;
-
         ResizeGPUScreen();
     }
 
@@ -141,30 +96,28 @@ namespace WW
     void Renderer::InitializeGPUScreen()
     {
         GPUScreen &s = state.Screen;
-        {
-            float screenQuadVertices[] = {
-                -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
 
-                -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+        float screenQuadVertices[] = {
+            -1.0f, 1.0f, 0.0f, 1.0f,
+            -1.0f, -1.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f, 1.0f, 0.0f, 1.0f,
+            1.0f, -1.0f, 1.0f, 0.0f,
+            1.0f, 1.0f, 1.0f, 1.0f};
 
-            s.Array = std::make_unique<VertexArray>();
-            s.Array->GenerateVertexBuffer(screenQuadVertices, sizeof(screenQuadVertices));
-            s.Array->GetVertexBuffer()->AddLayout(0, 0, 2); // pos.xy
-            s.Array->GetVertexBuffer()->AddLayout(1, 2, 2); // uv.xy
-        }
+        s.Shader = ShaderSystem::LoadShader("Screen.glsl");
 
-        {
-            FramebufferConfiguration config;
-            config.Width = state.Viewport.Width;
-            config.Height = state.Viewport.Height;
-            config.Passes.push_back({.Type = RPTextureType::Rgb});   // color
-            config.Passes.push_back({.Type = RPTextureType::Depth}); // depth
-            s.Buffer = std::make_unique<Framebuffer>(config);
-        }
+        s.Array = std::make_unique<VertexArray>();
+        s.Array->GenerateVertexBuffer(screenQuadVertices, sizeof(screenQuadVertices));
+        s.Array->GetVertexBuffer()->AddLayout(0, 0, 2);
+        s.Array->GetVertexBuffer()->AddLayout(1, 2, 2);
 
-        {
-            s.ScreenShader = std::make_shared<Shader>("Screen.glsl");
-        }
+        FramebufferConfiguration config;
+        config.Width = state.Viewport.Width;
+        config.Height = state.Viewport.Height;
+        config.Passes.push_back({.Type = RPTextureType::Rgb});
+        config.Passes.push_back({.Type = RPTextureType::Depth});
+        s.Buffer = std::make_unique<Framebuffer>(config);
     }
 
     void Renderer::BeginGPUScreenFrame()

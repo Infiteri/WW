@@ -6,6 +6,7 @@
 #include "Shader.h"
 #include "Camera/PerspectiveCamera.h"
 #include "Texture/TextureSystem.h"
+#include "Color.h"
 #include <glad/glad.h>
 #include <string>
 
@@ -13,10 +14,10 @@ namespace WW
 {
     struct Material
     {
-        float r, g, b, a;
+        Color Color;
         std::string ColorTexturePath;
 
-        Material() : r(255), g(255), b(255), a(255), ColorTexturePath("") {}
+        Material() : Color(255, 255, 255, 255), ColorTexturePath("") {}
     };
 
     struct GPUMaterial

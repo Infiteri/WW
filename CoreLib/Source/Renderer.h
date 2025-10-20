@@ -3,6 +3,9 @@
 #include "Buffer/Framebuffer.h"
 #include "Buffer/VertexArray.h"
 #include "Shader.h"
+#include "BatchRenderer.h"
+#include "Camera/PerspectiveCamera.h"
+#include "BatchRenderer.h"
 #include <memory>
 
 namespace WW
@@ -11,7 +14,6 @@ namespace WW
     {
     public:
         static void Viewport(float w, float h);
-
         static void Init();
         static void Render();
         static void Shutdown();
@@ -21,26 +23,29 @@ namespace WW
         {
             std::unique_ptr<VertexArray> Array;
             std::unique_ptr<Framebuffer> Buffer;
-            std::shared_ptr<Shader> ScreenShader;
+            std::shared_ptr<Shader> Shader;
         };
 
+    public:
+        struct State
+        {
+            struct Viewport
+            {
+                float Width = 0.0f;
+                float Height = 0.0f;
+                inline float GetAspect() const { return Width / Height; }
+            } Viewport;
+
+            GPUScreen Screen;
+            std::shared_ptr<Shader> MainShader;
+            PerspectiveCamera Camera;
+            BatchRenderer Batch;
+        };
+
+    private:
         static void InitializeGPUScreen();
         static void BeginGPUScreenFrame();
         static void EndGPUScreenFrame();
         static void ResizeGPUScreen();
-
-    public:
-        struct Viewport
-        {
-            float Width;
-            float Height;
-            inline float GetAspect() const { return Width / Height; };
-        };
-
-        struct State
-        {
-            struct Viewport Viewport;
-            GPUScreen Screen;
-        };
     };
 }

@@ -23,7 +23,7 @@ $(obj_dir)/$(current_dir)/$(src_dir)/%.o: $(src_dir)/%.cpp
 	g++ -c -g $< -o $@  -DUNICODE -D_UNICODE  -I../CoreLib/Source -I$(src_dir) -I../CoreLib/Vendor/glad/include
 
 link:
-	@g++ -mwindows -o $(build_dir)/DevApp.exe $(OBJ_FILES) $(CORE_LIB_OBJS) -lgdi32 -lopengl32 -luser32
+	@g++ -o $(build_dir)/DevApp.exe $(OBJ_FILES) $(CORE_LIB_OBJS) -lgdi32 -lopengl32 -luser32
 
 clean:
 	@rm -rf $(obj_dir)/$(current_dir)/$(src_dir)/*.o $(build_dir)/DevApp.exe

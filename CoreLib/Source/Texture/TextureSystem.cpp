@@ -6,38 +6,37 @@ namespace WW
 
     void TextureSystem::Init()
     {
-        state.DefaultTexture2D.Load();
+        state.DefaultTexture2D = std::make_shared<Texture2D>();
+        state.DefaultTexture2D->Load();
     }
 
     void TextureSystem::Shutdown()
     {
-        for (auto &pair : state.Textures)
-            delete pair.second;
-
         state.Textures.clear();
+        state.DefaultTexture2D.reset();
     }
 
-    Texture2D *TextureSystem::GetDefaultTexture2D()
+    std::shared_ptr<Texture2D> TextureSystem::GetDefaultTexture2D()
     {
-        return &state.DefaultTexture2D;
+        return state.DefaultTexture2D;
     }
 
-    Texture2D *TextureSystem::Get2D(const std::string &path)
+    std::shared_ptr<Texture2D> TextureSystem::Get2D(const std::string &path)
     {
         auto it = state.Textures.find(path);
         if (it != state.Textures.end())
-            return (Texture2D *)it->second;
+            return std::static_pointer_cast<Texture2D>(it->second);
 
         return Load2D(path);
     }
 
-    Texture2D *TextureSystem::Load2D(const std::string &path)
+    std::shared_ptr<Texture2D> TextureSystem::Load2D(const std::string &path)
     {
         auto it = state.Textures.find(path);
         if (it != state.Textures.end())
-            return (Texture2D *)it->second;
+            return std::static_pointer_cast<Texture2D>(it->second);
 
-        Texture2D *tex = new Texture2D();
+        auto tex = std::make_shared<Texture2D>();
         tex->Load(path);
         state.Textures[path] = tex;
         return tex;
@@ -45,6 +44,7 @@ namespace WW
 
     void TextureSystem::ActivateDefault()
     {
-        state.DefaultTexture2D.Use(0);
+        if (state.DefaultTexture2D)
+            state.DefaultTexture2D->Use(0);
     }
 }
