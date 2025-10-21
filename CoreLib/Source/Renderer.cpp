@@ -12,21 +12,17 @@
 namespace WW
 {
     static Renderer::State state;
-    static std::shared_ptr<Shader> postShader;
     static std::unique_ptr<BackgroundLayer> backgroundLayer, bg2;
     static std::vector<Transform> cubeTransforms;
     static std::vector<Material> cubeMaterials;
-    static std::shared_ptr<Texture2D> tex;
-
-    Color lastColor; // last frame color used
-    float lerpFactor = 0.05f;
 
     void Renderer::Init()
     {
         gladLoadGL();
         TextureSystem::Init();
 
-        postShader = ShaderSystem::LoadShader("Post.glsl");
+        state.Post.Add("Post.glsl");
+        state.Post.Add("In.glsl");
 
         bg2 = std::make_unique<BackgroundLayer>();
         bg2->SetTypeTexture("test.png");
@@ -99,12 +95,19 @@ namespace WW
         state.Screen.Array->GetVertexBuffer()->Draw();
 
         // post processing goes here
-        postShader->Use();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, post->GetRenderPass(0)->Id);
-        state.Screen.Array->Bind();
-        state.Screen.Array->GetVertexBuffer()->Bind();
-        state.Screen.Array->GetVertexBuffer()->Draw();
+        for (const auto &effectPair : state.Post.GetEffects())
+        {
+            const auto &effect = effectPair.second;
+            if (!effect.Enabled)
+                continue;
+
+            effect.Shader->Use();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, post->GetRenderPass(0)->Id);
+            state.Screen.Array->Bind();
+            state.Screen.Array->GetVertexBuffer()->Bind();
+            state.Screen.Array->GetVertexBuffer()->Draw();
+        }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glBindTexture(GL_TEXTURE_2D, post->GetRenderPass(0)->Id);

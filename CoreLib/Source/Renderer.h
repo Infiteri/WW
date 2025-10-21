@@ -3,6 +3,7 @@
 #include "Buffer/Framebuffer.h"
 #include "Buffer/VertexArray.h"
 #include "Shader.h"
+#include "PostProcessor.h"
 #include "BatchRenderer.h"
 #include "Camera/PerspectiveCamera.h"
 #include "BatchRenderer.h"
@@ -36,6 +37,8 @@ namespace WW
                 float Height = 0.0f;
                 inline float GetAspect() const { return Width / Height; }
             } Viewport;
+
+            PostProcessor Post;
 
             GPUScreen Screen;
             std::shared_ptr<Shader> MainShader;

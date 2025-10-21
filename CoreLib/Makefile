@@ -8,13 +8,16 @@ CPP_FILES := $(call rwildcard,$(src_dir)/,*.cpp)
 OBJ_FILES := $(patsubst $(src_dir)/%.cpp,$(obj_dir)/$(current_dir)/$(src_dir)/%.o,$(CPP_FILES))
 OBJ_DIRS := $(sort $(dir $(OBJ_FILES)))
 
-.PHONY: all scaffold
+.PHONY: all scaffold assets
 
 all: scaffold $(OBJ_FILES)
 
 scaffold:
 	@mkdir -p $(build_dir)
 	@mkdir -p $(OBJ_DIRS)
+
+assets:
+	@cp Assets/* $(build_dir)
 
 $(obj_dir)/$(current_dir)/$(src_dir)/%.o: $(src_dir)/%.cpp
 	@mkdir -p $(dir $@)
