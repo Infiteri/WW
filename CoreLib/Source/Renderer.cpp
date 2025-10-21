@@ -18,6 +18,7 @@ namespace WW
 
     void Renderer::Init()
     {
+        state.HasContext = true;
         gladLoadGL();
         TextureSystem::Init();
 
@@ -58,6 +59,8 @@ namespace WW
 
     void Renderer::Render()
     {
+        if (!state.HasContext)
+            return;
         BeginGPUScreenFrame();
 
         state.Camera.UpdateView();
@@ -119,17 +122,25 @@ namespace WW
 
     void Renderer::Viewport(float w, float h)
     {
-        glViewport(0, 0, static_cast<GLsizei>(w), static_cast<GLsizei>(h));
         state.Camera.SetAspect(w / h);
         state.Viewport.Width = w;
         state.Viewport.Height = h;
+        if (!state.HasContext)
+            return;
+        glViewport(0, 0, static_cast<GLsizei>(w), static_cast<GLsizei>(h));
         ResizeGPUScreen();
     }
 
-    void Renderer::Shutdown() {}
+    void Renderer::Shutdown()
+    {
+        if (!state.HasContext)
+            return;
+    }
 
     void Renderer::InitializeGPUScreen()
     {
+        if (!state.HasContext)
+            return;
         GPUScreen &s = state.Screen;
 
         float screenQuadVertices[] = {
@@ -168,6 +179,8 @@ namespace WW
 
     void Renderer::BeginGPUScreenFrame()
     {
+        if (!state.HasContext)
+            return;
         GPUScreen &s = state.Screen;
         s.Buffer->Bind();
         glEnable(GL_DEPTH_TEST);
@@ -180,6 +193,8 @@ namespace WW
 
     void Renderer::EndGPUScreenFrame()
     {
+        if (!state.HasContext)
+            return;
         GPUScreen &s = state.Screen;
         s.Buffer->Unbind();
         glDisable(GL_DEPTH_TEST);
@@ -189,6 +204,8 @@ namespace WW
 
     void Renderer::ResizeGPUScreen()
     {
+        if (!state.HasContext)
+            return;
         GPUScreen &s = state.Screen;
         s.Buffer->Resize(state.Viewport.Width, state.Viewport.Height);
         s.PostBuffer->Resize(state.Viewport.Width, state.Viewport.Height);

@@ -38,6 +38,8 @@ namespace WW
                 inline float GetAspect() const { return Width / Height; }
             } Viewport;
 
+            bool HasContext = false;
+
             PostProcessor Post;
 
             GPUScreen Screen;
