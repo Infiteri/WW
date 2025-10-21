@@ -91,7 +91,7 @@ namespace WW
         if (!array || !screenShader)
             return;
 
-        frameCount += 1.0/60;
+        frameCount += 1.0 / 60;
 
         switch (type)
         {
@@ -108,12 +108,18 @@ namespace WW
             if (!screenShader || !texture)
                 return;
 
+            // will not render the transparent layer
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
             screenShader->Use();
             texture->Use(0);
             screenShader->Int(0, "uTexture");
 
             array->Bind();
             glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            glDisable(GL_BLEND);
         }
         break;
 

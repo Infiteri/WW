@@ -23,6 +23,7 @@ namespace WW
         {
             std::unique_ptr<VertexArray> Array;
             std::unique_ptr<Framebuffer> Buffer;
+            std::unique_ptr<Framebuffer> PostBuffer;
             std::shared_ptr<Shader> Shader;
         };
 
