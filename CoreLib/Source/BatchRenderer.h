@@ -5,6 +5,7 @@
 #include "Buffer/VertexArray.h"
 #include "Shader.h"
 #include "Camera/PerspectiveCamera.h"
+#include "Material.h"
 #include "Texture/TextureSystem.h"
 #include "Color.h"
 #include <glad/glad.h>
@@ -12,13 +13,6 @@
 
 namespace WW
 {
-    struct Material
-    {
-        Color Color;
-        std::string ColorTexturePath;
-
-        Material() : Color(255, 255, 255, 255), ColorTexturePath("") {}
-    };
 
     struct GPUMaterial
     {

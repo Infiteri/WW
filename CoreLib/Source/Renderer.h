@@ -3,7 +3,9 @@
 #include "Buffer/Framebuffer.h"
 #include "Buffer/VertexArray.h"
 #include "Shader.h"
+#include "Math/Transform.h"
 #include "PostProcessor.h"
+#include "Scene/Scene.h"
 #include "BatchRenderer.h"
 #include "Camera/PerspectiveCamera.h"
 #include "BatchRenderer.h"
@@ -16,8 +18,17 @@ namespace WW
     public:
         static void Viewport(float w, float h);
         static void Init();
+        static void BeginFrame();
         static void Render();
+        static void EndFrame();
         static void Shutdown();
+
+        static void ActivateScene(std::shared_ptr<Scene> scene);
+
+        static void RenderCube(const Transform &transform, const Material &material);
+
+        static void ActiavatePostProcessShader(const std::string &shaderName);
+        static void DeactivatePostProcessShader(const std::string &shaderName);
 
     private:
         struct GPUScreen
@@ -46,6 +57,7 @@ namespace WW
             std::shared_ptr<Shader> MainShader;
             PerspectiveCamera Camera;
             BatchRenderer Batch;
+            std::shared_ptr<Scene> ActiveScene;
         };
 
     private:

@@ -6,8 +6,6 @@
 
 namespace WW
 {
-
-    static float frameCount = 0;
     void BackgroundLayer::EnsureBackgroundState()
     {
         if (!array)
@@ -91,7 +89,7 @@ namespace WW
         if (!array || !screenShader)
             return;
 
-        frameCount += 1.0 / 60;
+        glDisable(GL_DEPTH_TEST);
 
         switch (type)
         {
@@ -134,7 +132,6 @@ namespace WW
 
             customShader->Use();
             UploaUniforms(customShader);
-            customShader->Float(frameCount, "uTime");
             array->Bind();
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
@@ -143,6 +140,8 @@ namespace WW
         default:
             break;
         }
+
+        glEnable(GL_DEPTH_TEST);
     }
 
     void BackgroundLayer::SetTypeSolidColor(const Color &c)

@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Platform/Platform.h"
 #include "Debug/WWDebug.h"
 #include "Windows.h"
 #include "ShaderSystem.h"
@@ -12,24 +13,11 @@
 namespace WW
 {
     static Renderer::State state;
-    static std::unique_ptr<BackgroundLayer> backgroundLayer, bg2;
-    static std::vector<Transform> cubeTransforms;
-    static std::vector<Material> cubeMaterials;
-
     void Renderer::Init()
     {
         state.HasContext = true;
         gladLoadGL();
         TextureSystem::Init();
-
-        state.Post.Add("Post.glsl");
-        state.Post.Add("In.glsl");
-
-        bg2 = std::make_unique<BackgroundLayer>();
-        bg2->SetTypeTexture("test.png");
-
-        backgroundLayer = std::make_unique<BackgroundLayer>();
-        backgroundLayer->SetTypeShader("CS.glsl");
 
         state.MainShader = ShaderSystem::LoadShader("Shader.glsl");
 
@@ -42,45 +30,33 @@ namespace WW
         state.Camera.UpdateView();
 
         state.Batch.Init();
+    }
 
-        cubeTransforms.push_back(Transform{.Position = Vector3(-2.0f, 0.0f, 0.0f)});
-        cubeTransforms.push_back(Transform{.Position = Vector3(2.0f, 0.0f, 0.0f)});
-
-        Material mat0;
-        mat0.Color = {255, 255, 255, 255};
-        mat0.ColorTexturePath = "image.jfif";
-        cubeMaterials.push_back(mat0);
-
-        Material mat1;
-        mat1.Color = {255, 255, 255, 255};
-        mat1.ColorTexturePath = "port.jfif";
-        cubeMaterials.push_back(mat1);
+    void Renderer::BeginFrame()
+    {
+        if (!state.HasContext)
+            return;
+        BeginGPUScreenFrame();
+        state.Camera.UpdateView();
     }
 
     void Renderer::Render()
     {
         if (!state.HasContext)
             return;
-        BeginGPUScreenFrame();
 
-        state.Camera.UpdateView();
+        Platform::UpdateTotalTime();
 
-        // Render the background
-        // Draw the shader background first
-        glDisable(GL_DEPTH_TEST);
-        backgroundLayer->Render();
-        bg2->Render();
-        glEnable(GL_DEPTH_TEST);
-
-        // Render the main objects in 3D
         state.Batch.Begin();
         state.MainShader->Use();
-        int i = 0;
-        for (auto &t : cubeTransforms)
-            state.Batch.RenderCube(t, cubeMaterials[i++]);
-        state.Batch.End(&state.Camera, state.MainShader.get());
 
-        // End frame
+        if (state.ActiveScene)
+            state.ActiveScene->Render();
+    }
+
+    void Renderer::EndFrame()
+    {
+        state.Batch.End(&state.Camera, state.MainShader.get());
         EndGPUScreenFrame();
 
         auto pass = state.Screen.Buffer->GetRenderPass(0);
@@ -98,13 +74,13 @@ namespace WW
         state.Screen.Array->GetVertexBuffer()->Draw();
 
         // post processing goes here
-        for (const auto &effectPair : state.Post.GetEffects())
+        for (const auto &effect : state.Post.GetEffects())
         {
-            const auto &effect = effectPair.second;
             if (!effect.Enabled)
                 continue;
 
             effect.Shader->Use();
+            effect.Shader->Float(Platform::GetTotalTime(), "uTime");
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, post->GetRenderPass(0)->Id);
             state.Screen.Array->Bind();
@@ -135,6 +111,26 @@ namespace WW
     {
         if (!state.HasContext)
             return;
+    }
+
+    void Renderer::ActivateScene(std::shared_ptr<Scene> scene)
+    {
+        state.ActiveScene = scene;
+    }
+
+    void Renderer::RenderCube(const Transform &transform, const Material &material)
+    {
+        state.Batch.RenderCube(transform, material);
+    }
+
+    void Renderer::ActiavatePostProcessShader(const std::string &shaderName)
+    {
+        state.Post.EnableAndAdd(shaderName);
+    }
+
+    void Renderer::DeactivatePostProcessShader(const std::string &shaderName)
+    {
+        state.Post.Disable(shaderName);
     }
 
     void Renderer::InitializeGPUScreen()

@@ -3,7 +3,7 @@
 #include "Shader.h"
 #include <memory>
 #include <string>
-#include <unordered_map>
+#include <vector>
 
 namespace WW
 {
@@ -17,22 +17,22 @@ namespace WW
         void Remove(const std::string &shaderPath);
         void Enable(const std::string &shaderPath);
         void Disable(const std::string &shaderPath);
+        void EnableAndAdd(const std::string &shaderPath);
+        void DisableAndAdd(const std::string &shaderPath);
 
-    public:
         struct PostProcessEffect
         {
+            std::string Path;
             std::shared_ptr<Shader> Shader;
             bool Enabled = false;
         };
 
-    private:
-        std::unordered_map<std::string, PostProcessEffect>
-            effects;
-
-    public:
-        inline std::unordered_map<std::string, struct PostProcessEffect> &GetEffects()
+        inline std::vector<PostProcessEffect> &GetEffects()
         {
             return effects;
         }
+
+    private:
+        std::vector<PostProcessEffect> effects;
     };
 }

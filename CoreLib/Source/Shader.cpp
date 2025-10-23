@@ -7,18 +7,7 @@
 
 #include <Windows.h>
 
-// TODO: PLATFORM SPECIFIC SHOULD BE MOVED OUTSIDE THE NON PLATFOMR CORE
-inline void ShaderErr(const char *fmt, ...)
-{
-    char buf[1024];
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-    MessageBoxA(nullptr, buf, "Shader ERR", MB_OK | MB_ICONERROR);
-}
-
-#define ERR(...) ShaderErr(__VA_ARGS__)
+#define ERR(msg, ...) WW_LOG_LVL("SHADER ERROR", msg, ##__VA_ARGS__)
 
 namespace WW
 {
