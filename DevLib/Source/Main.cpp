@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Scene/Serializer/SceneSerializer.h"
 #include "Platform/Platform.h"
 #include "Scene/Components.h"
 #include "Scene/Object.h"
@@ -48,6 +49,10 @@ namespace WW
 
         auto shape2 = testObj2->AddComponent<ShapeComponent>();
         shape2->GetTransform().Position = {4, 0, 0};
+
+        SceneSerializer ser(scene);
+        ser.Serialize("Scene.wwscn");
+
         return scene;
     }
 

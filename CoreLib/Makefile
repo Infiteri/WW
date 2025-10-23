@@ -21,4 +21,4 @@ assets:
 
 $(obj_dir)/$(current_dir)/$(src_dir)/%.o: $(src_dir)/%.cpp
 	@mkdir -p $(dir $@)
-	g++ -c -g $< -o $@ -IVendor/glad/include -ISource
+	g++ -c -g $< -o $@ -IVendor/glad/include -ISource/YAML/include  -ISource

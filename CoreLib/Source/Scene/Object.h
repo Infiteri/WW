@@ -2,6 +2,7 @@
 
 #include "Math/Transform.h"
 #include "Components.h"
+#include "Core/UUID.h"
 
 #include <string>
 #include <vector>
@@ -13,6 +14,8 @@ namespace WW
     public:
         Object(const std::string &name = "New Object");
         ~Object();
+
+        inline UUID GetID() const { return id; };
 
         void Render();
 
@@ -44,16 +47,25 @@ namespace WW
         template <typename T>
         std::vector<std::shared_ptr<T>> GetComponents()
         {
-            std::vector<T *> comps;
-            for (auto comp : components)
+            std::vector<std::shared_ptr<T>> comps;
+
+            if (!components.data())
             {
-                T *tc = dynamic_cast<T *>(comp);
+                return comps;
+            }
+
+            for (auto &comp : components)
+            {
+                if (!comp)
+                    continue; // skip null pointers
+
+                auto tc = std::dynamic_pointer_cast<T>(comp);
                 if (tc)
                     comps.push_back(tc);
             }
 
             return comps;
-        };
+        }
 
         template <typename T>
         bool HasComponent() { return GetComponent<T>() != nullptr; };
@@ -96,6 +108,7 @@ namespace WW
         };
 
     private:
+        UUID id;
         Transform transform;
         std::string name;
         std::vector<std::shared_ptr<Component>> components;

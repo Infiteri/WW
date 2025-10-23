@@ -6,6 +6,8 @@
 
 namespace WW
 {
+  using ObjectList = std::vector<std::shared_ptr<Object>>;
+
   class Scene
   {
   public:
@@ -14,12 +16,14 @@ namespace WW
 
     void AddObject(std::shared_ptr<Object> o);
 
-    std::shared_ptr<Object> CreateObject(const std::string& name = "Object");
+    std::shared_ptr<Object> CreateObject(const std::string &name = "Object");
 
     void Render();
 
+    inline ObjectList &GetObjects() { return objects; };
+
   private:
-    std::vector<std::shared_ptr<Object>> objects;
+    ObjectList objects;
   };
 
 } // namespace WW
