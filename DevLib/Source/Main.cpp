@@ -34,14 +34,28 @@ namespace WW
         ImGui::End();
     }
 
-    int DevMain()
+    static std::shared_ptr<Scene> CreateTestScene()
     {
         std::shared_ptr<Scene> scene = std::make_shared<Scene>();
+        std::shared_ptr<Object> testObj = scene->CreateObject("Test Object");
+        std::shared_ptr<Object> testObj2 = scene->CreateObject("Test2 Object");
 
+        auto bg = testObj->AddComponent<BackgroundLayerComponent>();
+        bg->GetLayer()->SetTypeSolidColor({0, 120, 0, 255});
+
+        auto shape = testObj2->AddComponent<ShapeComponent>();
+        shape->GetTransform().Position = {-2, 0, 0};
+
+        auto shape2 = testObj2->AddComponent<ShapeComponent>();
+        shape2->GetTransform().Position = {4, 0, 0};
+        return scene;
+    }
+
+    int DevMain()
+    {
         glfwInit();
         GLFWwindow *window = glfwCreateWindow(800, 600, "DevApp", NULL, NULL);
         glfwMakeContextCurrent(window);
-        gladLoadGL();
 
         Renderer::Init();
 
@@ -57,18 +71,8 @@ namespace WW
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 330");
 
-        std::shared_ptr<Object> testObj = scene->CreateObject("Test Object");
-        std::shared_ptr<Object> testObj2 = scene->CreateObject("Test2 Object");
-
-        auto bg = testObj->AddComponent<BackgroundLayerComponent>();
-        bg->GetLayer()->SetTypeSolidColor({0, 120, 0, 255});
-
-        auto shape = testObj2->AddComponent<ShapeComponent>();
-        shape->GetTransform().Position = {-2, 0, 0};
-
-        auto shape2 = testObj2->AddComponent<ShapeComponent>();
-        shape2->GetTransform().Position = {4, 0, 0};
-
+        // here will be loaded the scene from file
+        std::shared_ptr<Scene> scene = CreateTestScene();
         Renderer::ActivateScene(scene);
 
         while (!glfwWindowShouldClose(window))
