@@ -1,5 +1,9 @@
-./Bin/
-./Bin-Obj/
+Bin
+Bin-Obj
+Bin/
+Bin-Obj/
+Bin/*
+Bin-Obj/*
 .vscode/settings.json
 .vscode/settings.json
 Bin/DevApp.exe
