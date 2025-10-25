@@ -5,11 +5,11 @@
 
 #define GET_COMPONENT_COUNT(type) count.type = object->GetComponents<type##Component>().size()
 
-#define SERIALIZE_COMPONENT_CALLBACK(type)                    \
-    {                                                         \
-        auto list = object->GetComponents<type##Component>(); \
-        for (int i = 0; i < list.size(); i++)                 \
-            Serialize##type##Component(out, list[i], i);      \
+#define SERIALIZE_COMPONENT_CALLBACK(type)                                                         \
+    {                                                                                              \
+        auto list = object->GetComponents<type##Component>();                                      \
+        for (int i = 0; i < list.size(); i++)                                                      \
+            Serialize##type##Component(out, list[i], i);                                           \
     }
 
 namespace WW
@@ -23,14 +23,16 @@ namespace WW
             return 0;
     };
 
-    static void SerializeBackgroundLayerComponent(YAML::Emitter &out, std::shared_ptr<BackgroundLayerComponent> component, int index)
+    static void SerializeBackgroundLayerComponent(
+        YAML::Emitter &out, std::shared_ptr<BackgroundLayerComponent> component, int index)
     {
         out << YAML::Key << "BackgroundLayerComponent " + std::to_string(index);
         out << YAML::BeginMap;
         out << YAML::EndMap;
     }
 
-    static void SerializeShapeComponent(YAML::Emitter &out, std::shared_ptr<ShapeComponent> component, int index)
+    static void SerializeShapeComponent(YAML::Emitter &out,
+                                        std::shared_ptr<ShapeComponent> component, int index)
     {
         out << YAML::Key << "ShapeComponent " + std::to_string(index);
         out << YAML::BeginMap;
@@ -41,10 +43,7 @@ namespace WW
         out << YAML::EndMap;
     }
 
-    ComponentSerializer::ComponentSerializer(std::shared_ptr<Object> object)
-        : object(object)
-    {
-    }
+    ComponentSerializer::ComponentSerializer(std::shared_ptr<Object> object) : object(object) {}
 
     void ComponentSerializer::Serialize(YAML::Emitter &out)
     {
@@ -57,9 +56,7 @@ namespace WW
         SERIALIZE_COMPONENT_CALLBACK(Shape);
     }
 
-    void ComponentSerializer::Deserialize(YAML::Node &node)
-    {
-    }
+    void ComponentSerializer::Deserialize(YAML::Node &node) {}
 
     void ComponentSerializer::SerializeComponentCount(YAML::Emitter &out)
     {
@@ -70,4 +67,4 @@ namespace WW
         SERIALIZE_FIELD("BackgroundLayerCount", count.BackgroundLayer);
         SERIALIZE_FIELD("ShapeCount", count.Shape);
     }
-}
+} // namespace WW

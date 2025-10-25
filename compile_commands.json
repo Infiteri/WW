@@ -1,0 +1,9 @@
+
+[
+  {
+    "directory": "D:/Users/user/Desktop/WW",
+    "command": "clang++ -std=c++20 -Wall -ICoreLib/Source -ICoreLib/Source/ImGui -ICoreLib/Source/YAML/include -isystem C:/msys64/ucrt64/include/c++/15.1.0", 
+    "file": "main.cpp"
+  }
+]
+

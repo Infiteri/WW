@@ -1,10 +1,10 @@
 #pragma once
 
+#include "Color.h"
 #include "Math/Matrix.h"
 #include "Math/Vector.h"
-#include "Color.h"
-#include <string>
 #include <stdint.h>
+#include <string>
 #include <unordered_map>
 
 namespace WW
@@ -39,4 +39,4 @@ namespace WW
 
         uint32_t GetUniId(const char *name);
     };
-} // namespace Core
+} // namespace WW
